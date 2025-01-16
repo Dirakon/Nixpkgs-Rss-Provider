@@ -1,0 +1,26 @@
++package org.nixpkgsrss
+
+# Comment is to be added.
+[branch program-name versions] > program-data
+  program-name > @
+  [] > as-rss
+    "TODO: format as rss xml" > @
+  [new-version] > actualized
+    program-data > @
+      branch
+      program-name
+      if.
+        and.
+          eq.
+            last-index-of.
+              versions
+              new-version
+            versions.length.minus 1
+          not.
+            versions.is-empty
+        versions
+        versions.with new-version
+
+# Comment is to be added.
+[version-number timestamp] > program-version
+  version-number > @

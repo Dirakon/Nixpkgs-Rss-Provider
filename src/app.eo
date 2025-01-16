@@ -1,0 +1,79 @@
++alias org.nixpkgsrss.program-data
++alias org.nixpkgsrss.program-data-storage
++alias org.nixpkgsrss.program-version
++package org.nixpkgsrss
+
+# Comment is to be added.
+[args] > app
+  QQ.fs.path > state-path
+    args.at 0
+  seq > @
+    *
+      while
+        true > [i] >>
+        [i] >>
+          seq > @
+            *
+              QQ.io.stdin.next-line > program-name
+              QQ.io.stdin.next-line > branch
+              QQ.io.stdout
+                "Reading...\n"
+              currently-saved-data > data
+                branch
+                program-name
+              QQ.io.stdout
+                "Getting current version...\n"
+              version > current-version
+                branch
+                program-name
+              data.actualized > new-data
+                current-version
+              program-data-storage > storage
+                state-path
+              QQ.io.stdout
+                "Writing...\n"
+              storage.write
+                new-data
+
+  [command] > send-command
+    QQ.io.stdout > @
+      chained.
+        QQ.txt.text
+          "Request: "
+        *
+          QQ.txt.text
+            command
+          QQ.txt.text
+            "\n"
+  [] > get-response
+    seq > @
+      *
+        QQ.io.stdout
+          "Response: "
+        QQ.io.stdin.next-line
+  [branch program-name] > version
+    QQ.txt.text > get-version
+      "get-version"
+    seq > @
+      *
+        send-command
+          get-version.chained
+            * "-" branch "-" program-name
+        get-response > version-number
+        program-version
+          version-number
+          current-time
+  [branch program-name] > currently-saved-data
+    seq > @
+      *
+        program-data-storage > storage
+          state-path
+        storage.read > data
+          branch
+          program-name
+
+  [] > current-time
+    output. > @
+      QQ.sys.posix
+        "gettimeofday"
+        * QQ.sys.posix.timeval
