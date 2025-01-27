@@ -11,13 +11,13 @@
             *
               QQ.io.stdin.next-line > program-name
               QQ.io.stdin.next-line > branch
-              QQ.io.stdout
-                "Reading...\n"
+              external.log
+                "Reading"
               currently-saved-data > data
                 branch
                 program-name
-              QQ.io.stdout
-                "Getting current version...\n"
+              external.log
+                "Getting current version"
               version > current-version
                 branch
                 program-name
@@ -25,36 +25,16 @@
                 current-version
               program-data-storage > storage
                 state-path
-              QQ.io.stdout
-                "Writing...\n"
+              external.log
+                "Writing..."
               storage.write
                 new-data
-
-  [command] > send-command
-    QQ.io.stdout > @
-      chained.
-        QQ.txt.text
-          "Request: "
-        *
-          QQ.txt.text
-            command
-          QQ.txt.text
-            "\n"
-  [] > get-response
-    seq > @
-      *
-        QQ.io.stdout
-          "Response: "
-        QQ.io.stdin.next-line
   [branch program-name] > version
-    QQ.txt.text > get-version
-      "get-version"
     seq > @
       *
-        send-command
-          get-version.chained
-            * "-" branch "-" program-name
-        get-response > version-number
+        external.version > version-number
+          branch
+          program-name
         program-version
           version-number
           current-time
@@ -97,15 +77,37 @@
     data-file > file
       branch
       program-name
+    file.path > src
     seq > @
       *
         if.
-          file.exists
+          exists.
+            QQ.fs.file
+              src
           seq
             *
-              file.size > file-size
-              data-file.file-stream.read
-                file-size
+              size. > file-size!
+                QQ.fs.file
+                  src
+              external.log
+                "Will be reading"
+              malloc.of > content
+                2
+                [m]
+                  seq > @
+                    *
+                      open.
+                        QQ.fs.file
+                          src
+                        "r"
+                        [f] >>
+                          ^.m.put > @
+                            f.read 2
+                      m
+              external.log
+                "Done reading"
+              external.log
+                content
               program-data
                 branch
                 program-name
@@ -141,19 +143,15 @@
                     * version.timestamp.tv-sec
                 QQ.txt.text
                   "\n"
-        QQ.txt.sprintf > any-var
-          "%s"
-          * "test"
-        QQ.io.stdout
+        external.log
           serialized-versions
-        QQ.io.stdout
-          "Is about to write to file...\n"
-        open.
+        external.log
+          "Is about to write to file..."
+        external.write
           file
-          "w"
-          f.write any-var > [f]
-        QQ.io.stdout
-          "Actually written to file...\n"
+          serialized-versions
+        external.log
+          "Actually written to file..."
         program-data-instance
 
 # Comment is to be added.
@@ -180,3 +178,66 @@
 # Comment is to be added.
 [version-number timestamp] > program-version
   version-number > @
+
+# Comment is to be added.
+[] > external
+  "" > @
+  [content] > output-multiline
+    QQ.txt.text > text-content
+      content
+    split. > lines
+      text-content
+      "\n"
+    seq > @
+      *
+        QQ.io.stdout
+          QQ.txt.sprintf
+            "(lines: %d)\n"
+            * lines.length
+        QQ.io.stdout
+          QQ.txt.sprintf
+            "%s\n"
+            * content
+  [text] > log
+    seq > @
+      *
+        QQ.io.stdout
+          "Log:\n"
+        output-multiline
+          text
+  [file content] > write
+    QQ.txt.text > write-file
+      "write-file"
+    seq > @
+      *
+        send-command
+          write-file.chained
+            * command-separator file.as-path
+        output-multiline content
+  [command] > send-command
+    QQ.io.stdout > @
+      chained.
+        QQ.txt.text
+          "Request: "
+        *
+          QQ.txt.text
+            command
+          QQ.txt.text
+            "\n"
+  [] > get-response
+    seq > @
+      *
+        QQ.io.stdout
+          "Response: "
+        QQ.io.stdin.next-line
+  [branch program-name] > version
+    QQ.txt.text > get-version
+      "get-version"
+    seq > @
+      *
+        send-command
+          get-version.chained
+            * command-separator branch command-separator program-name
+        get-response > version-number
+        version-number
+  "|||" > command-separator
