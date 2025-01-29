@@ -37,7 +37,7 @@
           program-name
         program-version
           version-number
-          current-time
+          current-time.tv-sec
   [branch program-name] > currently-saved-data
     seq > @
       *
@@ -73,6 +73,7 @@
       *
         directory.made
         file
+
   [branch program-name] > read
     data-file > file
       branch
@@ -86,24 +87,10 @@
               src
           seq
             *
-              size. > file-size!
-                QQ.fs.file
-                  src
               external.log
                 "Will be reading"
-              malloc.of > content
-                2
-                [m]
-                  seq > @
-                    *
-                      open.
-                        QQ.fs.file
-                          src
-                        "r"
-                        [f] >>
-                          ^.m.put > @
-                            f.read 2
-                      m
+              external.read > content
+                file
               external.log
                 "Done reading"
               external.log
@@ -111,8 +98,23 @@
               program-data
                 branch
                 program-name
-                QQ.structs.list
-                  tuple.empty
+                mapped.
+                  QQ.structs.list
+                    split.
+                      content
+                      "\n"
+                  [line] >>
+                    program-version > @
+                      at.
+                        QQ.txt.sscanf
+                          "%s|||%d"
+                          line
+                        0
+                      at.
+                        QQ.txt.sscanf
+                          "%s|||%d"
+                          line
+                        1
           seq
             *
               program-data
@@ -140,7 +142,7 @@
                 QQ.txt.text
                   QQ.txt.sprintf
                     "%d"
-                    * version.timestamp.tv-sec
+                    * version.timestamp
                 QQ.txt.text
                   "\n"
         external.log
@@ -152,13 +154,34 @@
           serialized-versions
         external.log
           "Actually written to file..."
+        external.log
+          program-data-instance.as-rss
         program-data-instance
 
 # Comment is to be added.
 [branch program-name versions] > program-data
   program-name > @
   [] > as-rss
-    "TODO: format as rss xml" > @
+    QQ.txt.sprintf > prefix!
+      "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n<rss version=\"2.0\">\n\n<channel>\n  <title>%s versions</title>\n  <link>https://search.nixos.org/packages?channel=%s&from=0&size=50&sort=relevance&type=packages&query=%s</link>\n  <description>History of versions</description>"
+      * program-name branch program-name
+    [] > middle-part
+      joined. > @
+        QQ.txt.text
+          "\n"
+        mapped.
+          versions
+          [version] >>
+            QQ.txt.sprintf > @
+              "  <item>\n    <title>%s</title>\n    <link>https://search.nixos.org/packages?channel=%s&from=0&size=50&sort=relevance&type=packages&query=%s</link>\n    <description>New version at %d</description>\n  </item>"
+              * version.version-number branch program-name version.timestamp
+    "</channel>\n\n</rss>" > suffix
+    QQ.txt.sprintf > @
+      "%s\n%s\n%s"
+      *
+        prefix
+        middle-part
+        suffix
   [new-version] > actualized
     program-data > @
       branch
@@ -214,6 +237,33 @@
           write-file.chained
             * command-separator file.as-path
         output-multiline content
+  [file] > read
+    [items] > range
+      QQ.structs.range > @
+        []
+          [num] > build
+            num > @
+            build (@.plus 1) > next
+          build 0 > @
+        items
+    QQ.txt.text > read-file
+      "read-file"
+    seq > @
+      *
+        send-command
+          read-file.chained
+            * command-separator file.as-path
+        QQ.io.stdin.next-line > metadata
+        (QQ.txt.sscanf "(lines: %d)" metadata).at 0 > line-count
+        joined. > content
+          QQ.txt.text
+            "\n"
+          mapped.
+            range
+              line-count
+            QQ.io.stdin.next-line > [i]
+        content
+
   [command] > send-command
     QQ.io.stdout > @
       chained.
