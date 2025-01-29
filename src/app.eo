@@ -9,10 +9,10 @@
         [i] >>
           seq > @
             *
-              QQ.io.stdin.next-line > program-name
-              QQ.io.stdin.next-line > branch
+              external.branch > branch
+              external.program-name > program-name
               external.log
-                "Reading"
+                "Reading..."
               currently-saved-data > data
                 branch
                 program-name
@@ -29,6 +29,8 @@
                 "Writing..."
               storage.write
                 new-data
+              new-data.output-as-rss
+
   [branch program-name] > version
     seq > @
       *
@@ -38,6 +40,7 @@
         program-version
           version-number
           current-time.tv-sec
+
   [branch program-name] > currently-saved-data
     seq > @
       *
@@ -87,14 +90,8 @@
               src
           seq
             *
-              external.log
-                "Will be reading"
               external.read > content
                 file
-              external.log
-                "Done reading"
-              external.log
-                content
               program-data
                 branch
                 program-name
@@ -122,6 +119,7 @@
                 program-name
                 QQ.structs.list
                   tuple.empty
+
   [program-data-instance] > write
     data-file > file
       program-data-instance.branch
@@ -147,41 +145,48 @@
                   "\n"
         external.log
           serialized-versions
-        external.log
-          "Is about to write to file..."
         external.write
           file
           serialized-versions
-        external.log
-          "Actually written to file..."
-        external.log
-          program-data-instance.as-rss
         program-data-instance
 
 # Comment is to be added.
 [branch program-name versions] > program-data
   program-name > @
-  [] > as-rss
-    QQ.txt.sprintf > prefix!
+
+  [] > output-as-rss
+    QQ.txt.sprintf > prefix
       "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n<rss version=\"2.0\">\n\n<channel>\n  <title>%s versions</title>\n  <link>https://search.nixos.org/packages?channel=%s&from=0&size=50&sort=relevance&type=packages&query=%s</link>\n  <description>History of versions</description>"
       * program-name branch program-name
-    [] > middle-part
-      joined. > @
-        QQ.txt.text
-          "\n"
+    [] > output-middle-part
+      seq > @
         mapped.
           versions
           [version] >>
-            QQ.txt.sprintf > @
-              "  <item>\n    <title>%s</title>\n    <link>https://search.nixos.org/packages?channel=%s&from=0&size=50&sort=relevance&type=packages&query=%s</link>\n    <description>New version at %d</description>\n  </item>"
-              * version.version-number branch program-name version.timestamp
+            QQ.io.stdout > @
+              QQ.txt.sprintf
+                "  <item>\n    <title>%s</title>\n    <link>https://search.nixos.org/packages?channel=%s&from=0&size=50&sort=relevance&type=packages&query=%s</link>\n    <description>New version at %d</description>\n  </item>\n"
+                * version.version-number branch program-name version.timestamp
     "</channel>\n\n</rss>" > suffix
-    QQ.txt.sprintf > @
-      "%s\n%s\n%s"
+    seq > @
       *
-        prefix
-        middle-part
-        suffix
+        QQ.io.stdout
+          "Rss:\n"
+        5.times versions.length > number-of-lines-middle
+        7 > prefix-lines
+        3 > suffix-lines
+        (number-of-lines-middle.plus prefix-lines).plus suffix-lines > number-of-lines
+        external.line-counter number-of-lines
+        QQ.io.stdout
+          prefix
+        QQ.io.stdout
+          "\n"
+        output-middle-part
+        QQ.io.stdout
+          suffix
+        QQ.io.stdout
+          "\n"
+
   [new-version] > actualized
     program-data > @
       branch
@@ -205,6 +210,14 @@
 # Comment is to be added.
 [] > external
   "" > @
+  "|||" > command-separator
+
+  [line-count] > line-counter
+    QQ.io.stdout > @
+      QQ.txt.sprintf
+        "(lines: %d)\n"
+        * line-count
+
   [content] > output-multiline
     QQ.txt.text > text-content
       content
@@ -213,14 +226,13 @@
       "\n"
     seq > @
       *
-        QQ.io.stdout
-          QQ.txt.sprintf
-            "(lines: %d)\n"
-            * lines.length
+        line-counter
+          lines.length
         QQ.io.stdout
           QQ.txt.sprintf
             "%s\n"
             * content
+
   [text] > log
     seq > @
       *
@@ -228,6 +240,7 @@
           "Log:\n"
         output-multiline
           text
+
   [file content] > write
     QQ.txt.text > write-file
       "write-file"
@@ -237,6 +250,8 @@
           write-file.chained
             * command-separator file.as-path
         output-multiline content
+        get-confirmation
+
   [file] > read
     [items] > range
       QQ.structs.range > @
@@ -274,12 +289,17 @@
             command
           QQ.txt.text
             "\n"
+
   [] > get-response
     seq > @
       *
-        QQ.io.stdout
-          "Response: "
         QQ.io.stdin.next-line
+
+  [] > get-confirmation
+    seq > @
+      *
+        QQ.io.stdin.next-line
+
   [branch program-name] > version
     QQ.txt.text > get-version
       "get-version"
@@ -290,4 +310,21 @@
             * command-separator branch command-separator program-name
         get-response > version-number
         version-number
-  "|||" > command-separator
+
+  [] > branch
+    QQ.txt.text > get-branch
+      "branch"
+    seq > @
+      *
+        send-command
+          get-branch
+        get-response
+
+  [] > program-name
+    QQ.txt.text > program-name
+      "program-name"
+    seq > @
+      *
+        send-command
+          program-name
+        get-response
