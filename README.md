@@ -6,7 +6,7 @@ RSS provider for [NixPkgs](https://github.com/NixOS/nixpkgs) used to monitor ver
 
 All requirements are specified through nix, so you can use it to get all the requirements. `nix develop` or `direnv allow`.
 
-Alternatively, you could manually install `npm`, `python3` and `jdk` (note the specific versions used in `flake.nix` and `flake.lock` for better reproducability)
+Alternatively, you could manually install `npm`, `python3` (with `flask`) and `jdk` (note the specific versions used in `flake.nix` and `flake.lock` for better reproducability)
 
 ## Usage
 
@@ -17,7 +17,7 @@ npm i
 
 Afterwards, use:
 ```bash
-./src/manager.py
+./src/orchestrator.py
 ```
 
 If some sudden problems arise, you could also use cleanup helper script that removes all potentially broken cache:

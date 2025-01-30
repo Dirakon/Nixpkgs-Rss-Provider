@@ -18,7 +18,9 @@
               buildInputs = [
                 pkgs.nodejs_18
                 pkgs.jdk17
-                pkgs.python3
+                (pkgs.python3.withPackages (python-pkgs: [
+                  python-pkgs.flask
+                ]))
               ];
             };
           };

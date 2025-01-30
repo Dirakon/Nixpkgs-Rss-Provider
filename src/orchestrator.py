@@ -4,7 +4,10 @@ import subprocess
 import re
 import sys
 import threading
+from flask import Flask, request
 
+# Constants
+SERVER_PORT = 8080
 LINE_COUNT_PATTERN = re.compile(r'^\(lines: (\d+)\)$')
 
 def stderr_reader(proc):
@@ -40,7 +43,7 @@ def get_rss(proc, branch, program_name, version):
     while True:
         line = proc.stdout.readline()
         if not line:  # EOF
-            break
+            return None
         line = line.rstrip('\n')
 
         if line.startswith("Request: "):
@@ -64,7 +67,7 @@ def get_rss(proc, branch, program_name, version):
                         proc.stdin.write("OK\n")
                         proc.stdin.flush()
                     except IOError:
-                        pass  # Handle file write error silently
+                        print(f"Error writing file {file_path}")
             elif line.startswith("Request: read-file|||"):
                 parts = line.split('|||')
                 file_path = parts[1].strip()
@@ -72,6 +75,7 @@ def get_rss(proc, branch, program_name, version):
                     with open(file_path, 'r') as f:
                         content = f.read().splitlines()
                 except IOError:
+                    print(f"Error reading file {file_path}")
                     content = []
                 write_multiline(proc.stdin, content)
         elif line == "Log:":
@@ -105,13 +109,29 @@ def main():
     stderr_thread.daemon = True
     stderr_thread.start()
 
-    while True:
-        program = input("program: ")
-        branch = input("branch: ")
-        current_version = input("current version: ")
-        rss = get_rss(proc, branch, program, current_version)
+    # Create process lock and Flask app
+    process_lock = threading.Lock()
+    app = Flask(__name__)
 
-    # Wait for the subprocess to terminate
+    @app.route('/rss')
+    def handle_rss_request():
+        branch = request.args.get('branch')
+        program = request.args.get('program')
+        
+        if not branch or not program:
+            return "Missing required parameters: branch and program", 400
+        
+        with process_lock:
+            # TODO: need to figure out corrent cli command to get the current version of the program on the branch instead
+            current_version = input(f"Enter current version for program {program} on branch {branch}: ")
+            result = get_rss(proc, branch, program, current_version)
+        
+        return result if result else "No RSS data found", 200
+
+    # Start web server
+    app.run(host='0.0.0.0', port=SERVER_PORT, threaded=True)
+
+    # Cleanup
     proc.wait()
 
 if __name__ == "__main__":

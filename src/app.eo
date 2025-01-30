@@ -154,6 +154,8 @@
 [branch program-name versions] > program-data
   program-name > @
 
+  # Have some weird stackoverflow problems if I try to separate rss-string creation and the output.
+  # Therefore, I have to break responsibilities here and unify rss-string creation and the ouput.
   [] > output-as-rss
     QQ.txt.sprintf > prefix
       "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n<rss version=\"2.0\">\n\n<channel>\n  <title>%s versions</title>\n  <link>https://search.nixos.org/packages?channel=%s&from=0&size=50&sort=relevance&type=packages&query=%s</link>\n  <description>History of versions</description>"
